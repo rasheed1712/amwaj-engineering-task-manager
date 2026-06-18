@@ -152,3 +152,36 @@ function exportJSON(){const blob=new Blob([JSON.stringify(db,null,2)],{type:"app
 function importJSON(){alert("بعد ربط Firebase، الاسترجاع من JSON غير مفعل لتجنب تعارض البيانات.")}
 async function resetAll(){if(!requireAdmin())return;const code=prompt("للموافقة على مسح جميع البيانات، أدخل رمز التأكيد:");if(code===null)return;if(code!=="r.h_1712"){alert("رمز التأكيد غير صحيح. لم يتم مسح البيانات.");return}if(!confirm("سيتم مسح الموظفين والمهام وصلاحيات الحسابات من Firestore. حسابات Authentication يجب حذفها من Firebase Console إذا رغبت. هل أنت متأكد؟"))return;const batch=fs.batch();db.tasks.forEach(t=>batch.delete(fs.collection("tasks").doc(t.id)));db.employees.forEach(e=>batch.delete(fs.collection("employees").doc(e.id)));db.users.forEach(u=>{if(u.id!==currentAuthUser.uid)batch.delete(fs.collection("users").doc(u.id))});await batch.commit();selectedEmployeeWindowId="";localStorage.setItem("task_manager_selected_employee","");alert("تم مسح البيانات من Firestore.")}
 function renderAll(){if(!currentUserData)return;renderEmployeeSelect();renderStats();renderTasks();renderEmployees();renderAccounts();document.querySelectorAll(".admin-only").forEach(el=>el.classList.toggle("hidden",!isAdmin()))}
+
+
+// PWA install support
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  const btn1 = document.getElementById("installAppBtn");
+  const btn2 = document.getElementById("installAppBtnLogin");
+  if(btn1) btn1.style.display = "inline-block";
+  if(btn2) btn2.style.display = "inline-block";
+});
+
+async function installApp(){
+  if(!deferredInstallPrompt){
+    alert("إذا لم يظهر زر التنزيل، افتح الموقع من Chrome أو Edge ثم اختر Install app / Add to Home Screen من قائمة المتصفح.");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  const btn1 = document.getElementById("installAppBtn");
+  const btn2 = document.getElementById("installAppBtnLogin");
+  if(btn1) btn1.style.display = "none";
+  if(btn2) btn2.style.display = "none";
+}
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+  });
+}
